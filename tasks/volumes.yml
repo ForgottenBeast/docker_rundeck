@@ -1,0 +1,13 @@
+- block:
+  tags:
+    - rundeck_volumes_setup
+    - rundeck_setup
+
+  - name: "check if {{ item }} exists"
+    command: docker volume inspect {{ item }}
+    register: myvolume_exists
+    failed_when: false
+  
+  - name: "create {{ item }}"
+    command: docker volume create --name {{ item }}
+    when: myvolume_exists|failed

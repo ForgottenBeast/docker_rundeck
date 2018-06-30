@@ -1,0 +1,66 @@
+- name: "Create proxy_net if it does not exist"
+  become: True
+  tags:
+    - rundeck_deploy
+    - rundeck_setup
+  docker_network:
+    name: proxy_net
+
+- include_tasks: volumes.yml
+  become: True
+  with_items:
+    - "{{ rundeck_plugins_volume }}"
+  tags:
+    - rundeck_volumes_setup
+    - rundeck_setup
+
+- name: "Start rundeck container w/ ssl"
+  when: SSL == True
+  become: True
+  tags:
+    - rundeck_deploy
+    - rundeck_update
+    - rundeck_restore
+  docker_container:
+    name: rundeck
+    restart: always
+    image: linuxserver/rundeck
+    pull: True
+    state: started
+    env:
+     VIRTUAL_HOST: "{{ rundeck_domain_name }}"
+     VIRTUAL_PROTO: http
+     VIRTUAL_PORT: 4400
+     LETSENCRYPT_HOST: "{{ rundeck_letsencrypt_domain_name }}"
+     LETSENCRYPT_EMAIL: "{{ rundeck_letsencrypt_mail }}"
+     LETSENCRYPT_TEST: "{{ rundeck_letsencrypt_testmode }}"
+     EXTERNAL_SERVER_URL: "http://{{rundeck_domain_name}}"
+
+    networks:
+      - name: proxy_net
+    volumes:
+      - "{{ rundeck_plugins_volume }}:/opt/rundeck-plugins"
+
+- name: "Start rundeck container w/o SSL"
+  become: True
+  when: SSL == False
+  tags:
+    - rundeck_update
+    - rundeck_deploy
+    - rundeck_restore
+  docker_container:
+    name: rundeck
+    image: linuxserver/rundeck
+    pull: True
+    restart: always
+    state: started
+    env:
+     VIRTUAL_HOST: "{{ rundeck_domain_name }}"
+     VIRTUAL_PROTO: http
+     VIRTUAL_PORT: 4400
+     EXTERNAL_SERVER_URL: "http://{{rundeck_domain_name}}"
+    networks:
+      - name: proxy_net
+    volumes:
+      - "{{ rundeck_plugins_volume }}:/opt/rundeck-plugins"
+
